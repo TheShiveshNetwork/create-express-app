@@ -1,0 +1,21 @@
+{
+  "name": "create-express-app",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node src/index.js"
+  },
+  "bin": {
+    "create-express-app": "bin/cli.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "chalk": "^5.2.0",
+    "inquirer": "^9.2.0",
+    "ora": "^8.2.0"
+  }
+}

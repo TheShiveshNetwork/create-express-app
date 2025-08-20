@@ -12,7 +12,7 @@ import { WriteFiles } from "./write.js";
 async function main() {
     console.log(chalk.green.bold("\n🚀 Create Express App\n"));
     let projectName = process.argv[2];
-    let dependencies = ["express", "cors", "body-parser"];
+    let dependencies = ["express", "cors", "body-parser", "dotenv"];
     let devDependencies = [];
 
     const packageManager = detectPackageManager();
@@ -79,7 +79,7 @@ async function main() {
     }
 
     if (answers.language === "TypeScript") {
-        devDependencies = ["typescript", "@types/express", "@types/cors", "@types/body-parser", "tsc-alias"];
+        devDependencies.push("typescript", "@types/express", "@types/cors", "@types/body-parser", "tsc-alias");
         fs.writeFileSync(
             "tsconfig.json",
             JSON.stringify(
@@ -127,7 +127,7 @@ async function main() {
     );
 
     // write all the files
-    let write = new WriteFiles(answers.language);
+    let write = new WriteFiles(answers);
     write.writeAppFile();
     write.writeIndexFile();
     write.writeRoutesFile();
@@ -136,6 +136,9 @@ async function main() {
 
     // Update package.json 
     let pkg = JSON.parse(fs.readFileSync("package.json", "utf-8"));
+    if (answers.language != "TypeScript") {
+        pkg.type = "module";
+    }
     pkg.dependencies = pkg.dependencies || {};
     pkg.devDependencies = pkg.devDependencies || {};
     pkg.scripts = {
@@ -146,7 +149,7 @@ async function main() {
 
     if (answers.language === "TypeScript") {
         pkg.scripts = {
-            build: "tsc-alias",
+            build: "tsc && tsc-alias",
             ...pkg.scripts,
         }
     }

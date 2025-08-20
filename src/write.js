@@ -4,21 +4,23 @@ import { returnAppFile, returnControllerData, returnIndexFile, returnRouteData }
 
 export class WriteFiles {
     lang;
+    features;
 
-    constructor(lang) {
-        this.lang = lang;
+    constructor(answers) {
+        this.lang = answers.language;
+        this.features = answers.features;
     }
 
     writeAppFile() {
         fs.writeFileSync("src/app" + getFileExtension(this.lang),
-            returnAppFile(),
+            returnAppFile(this.lang),
         );
     }
 
     writeIndexFile() {
         fs.writeFileSync(
             "src/index" + (getFileExtension(this.lang)),
-            returnIndexFile(),
+            returnIndexFile(this.lang),
         );
     }
 
@@ -38,8 +40,8 @@ export class WriteFiles {
         this.writeSampleRoute();
         fs.writeFileSync(filepath,
             `import { Router } from 'express';
-import { pingRoute } from './ping';
-import { sampleRoute } from './sample';
+import { pingRoute } from './ping${this.lang != "TypeScript" ? '.js' : ""}';
+import { sampleRoute } from './sample${this.lang != "TypeScript" ? '.js' : ""}';
 
 const router = Router();
 
@@ -79,7 +81,7 @@ export class ControllerClass {
 const Controllers = new ControllerClass();
 export default Controllers;\n`
         } else {
-            content = `import { SampleController } from "./sample";
+            content = `import { SampleController } from "./sample${this.lang != "TypeScript" ? '.js' : ""}";
 
 export class ControllerClass {
     constructor() {
@@ -100,6 +102,7 @@ export default Controllers;\n`
     }
 
     writeSchemaFile() {
+        if (!this.features?.includes("zod")) return;
         let filepath = "src/schemas/" + "index" + getFileExtension(this.lang);
         let content = `import { z } from "zod";
 

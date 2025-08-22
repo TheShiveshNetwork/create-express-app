@@ -11,6 +11,16 @@ export class WriteFiles {
         this.features = answers.features;
     }
 
+    writeGitignore() {
+      fs.writeFileSync(".gitignore", 
+        `node_modules
+dist
+bin
+
+*.local`
+      );
+    }
+
     writeAppFile() {
         fs.writeFileSync("src/app" + getFileExtension(this.lang),
             returnAppFile(this.lang),

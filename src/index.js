@@ -128,6 +128,7 @@ async function main() {
 
     // write all the files
     let write = new WriteFiles(answers);
+    write.writeGitignore();
     write.writeAppFile();
     write.writeIndexFile();
     write.writeRoutesFile();

@@ -50,7 +50,11 @@ async function main() {
     fs.mkdirSync(projectPath);
     process.chdir(projectPath);
 
-    execSync(`${packageManager} init -y`, { stdio: "ignore" });
+    if (packageManager === "pnpm") {
+      execSync(`${packageManager} init`, { stdio: "ignore" });
+    } else {
+      execSync(`${packageManager} init -y`, { stdio: "ignore" });
+    }
 
     const answers = await inquirer.prompt(prompts);
 

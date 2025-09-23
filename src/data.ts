@@ -1,5 +1,7 @@
-export function returnIndexFile(lang) {
-    return `import app from "./app${lang != "TypeScript" ? '.js' : ""}";
+import { LANGUAGE } from "./utils.js"
+
+export function returnIndexFile(lang: LANGUAGE) {
+    return `import app from "./app${lang != LANGUAGE.TYPESCRIPT ? '.js' : ""}";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -10,12 +12,12 @@ app.listen(PORT, () => {
 });`
 }
 
-export function returnAppFile(lang) {
+export function returnAppFile(lang: LANGUAGE) {
     return `import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 
-import router from "./routes${lang != "TypeScript" ? '.js' : ""}";
+import router from "./routes${lang != LANGUAGE.TYPESCRIPT ? '.js' : ""}";
 
 const app = express();
 
@@ -34,8 +36,8 @@ app.use("/api", router);
 export default app;`
 }
 
-export function returnRouteData(lang, name) {
-    if (lang === "TypeScript") {
+export function returnRouteData(lang: LANGUAGE, name: string) {
+    if (lang === LANGUAGE.TYPESCRIPT) {
         return `import { type Request, type Response, Router } from "express";
 import Controllers from "@/controllers/index";
 
@@ -44,17 +46,17 @@ export const ${name}Route = Router();
 ${name}Route.get('/${name}', (req: Request, res: Response) => void Controllers.${name}Controller(req, res));`
     }
     return `import { Router } from "express";
-import Controllers from "./index${lang != "TypeScript" ? '.js' : ""}";
+import Controllers from "./index.js";
 
 export const ${name}Route = Router();
 
 ${name}Route.get('/${name}', (req, res) => void Controllers.${name}Controller(req, res));`
 }
 
-export function returnControllerData(lang, name) {
-    if (lang === "TypeScript") {
+export function returnControllerData(lang: LANGUAGE, name: string) {
+    if (lang === LANGUAGE.TYPESCRIPT) {
         return `import type { Request, Response } from "express";
-import type { ControllerClass } from "@/controllers/index${lang != "TypeScript" ? '.js' : ""}";
+import type { ControllerClass } from "@/controllers/index";
 
 export async function ${name.charAt(0).toUpperCase()+name.slice(1)}Controller(this: ControllerClass, request:Request, response:Response) {
     return response.status(200).json({ message: "This is a sample route" });

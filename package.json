@@ -1,21 +1,30 @@
 {
   "name": "@mrknown404/create-express-app",
-  "version": "1.0.3",
-  "main": "src/index.js",
+  "version": "1.0.4",
   "type": "module",
+  "keywords": [],
+  "author": "mrknown404",
+  "license": "ISC",
+  "description": "A CLI tool to quickly scaffold an express.js application",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "node src/index.js"
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "node dist/index.js"
   },
   "bin": {
-    "create-express-app": "bin/cli.js"
+    "create-express-app": "dist/bin/cli.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "chalk": "^5.2.0",
     "inquirer": "^9.2.0",
     "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^24.5.2",
+    "@types/ora": "^3.1.0",
+    "typescript": "^5.9.2"
   }
 }

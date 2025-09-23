@@ -2,7 +2,10 @@
   "name": "@mrknown404/create-express-app",
   "version": "1.0.4",
   "type": "module",
-  "keywords": [],
+  "keywords": [
+    "create-express-app",
+    "express-scaffold"
+  ],
   "author": "mrknown404",
   "license": "ISC",
   "description": "A CLI tool to quickly scaffold an express.js application",
@@ -11,7 +14,8 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "test": "node dist/index.js"
+    "test": "node dist/index.js",
+    "prepare": "husky install"
   },
   "bin": {
     "create-express-app": "dist/bin/cli.js"
@@ -22,9 +26,30 @@
     "ora": "^8.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.36.0",
     "@types/inquirer": "^9.0.9",
     "@types/node": "^24.5.2",
     "@types/ora": "^3.1.0",
-    "typescript": "^5.9.2"
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
+    "eslint": "^9.36.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "globals": "^16.4.0",
+    "husky": "^8.0.3",
+    "jiti": "^2.6.0",
+    "lint-staged": "^16.2.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.1"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "package.json": [
+      "prettier --write"
+    ]
   }
 }

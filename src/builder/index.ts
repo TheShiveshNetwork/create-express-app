@@ -1,6 +1,5 @@
 import chalk from 'chalk';
 import {
-  FEATURES,
   InitialDependencies,
   InitialDevDependencies,
   PromptAnswers,
@@ -8,6 +7,7 @@ import {
 } from '../prompts.js';
 import {
   detectPackageManager,
+  FEATURES,
   getLatestVersion,
   InitCommands,
   InstallCommands,

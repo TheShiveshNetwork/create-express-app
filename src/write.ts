@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { getFileExtension, LANGUAGE } from './utils.js';
+import { getFileExtension, LANGUAGE, FEATURES } from './utils.js';
 import {
   returnAppFile,
   returnControllerData,
@@ -7,7 +7,7 @@ import {
   returnRouteData,
   returnSchemaFile,
 } from './data.js';
-import { FEATURES, PromptAnswers } from './prompts.js';
+import { PromptAnswers } from './prompts.js';
 
 export class WriteFiles {
   private language: LANGUAGE;

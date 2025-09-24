@@ -5,12 +5,7 @@ async function main() {
   const builder = new ProjectBuilder();
   await builder
     .init()
-    .then((b) => b.collectPrompts())
-    .then((b) => b.handleDependencies())
-    .then((b) => b.setupTypeScript())
-    .then((b) => b.setupEslint())
-    .then((b) => b.createSourceFiles())
-    .then((b) => b.updatePackageJson())
+    .then((b) => b.setupProject())
     .then((b) => b.finalize());
 }
 

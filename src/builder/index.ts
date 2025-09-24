@@ -125,29 +125,98 @@ export abstract class SafeBuilder {
 export abstract class BuilderHelper extends SafeBuilder {
   protected prompts: typeof defaultPrompts;
   protected customSteps: (() => Promise<void> | void)[] = [];
-  protected answers!: PromptAnswers;
-  protected writeFiles!: WriteFiles;
+  protected promptOrConfig!: PromptAnswers;
   protected dependencies: string[];
   protected devDependencies: string[];
+  protected config?: Partial<PromptAnswers>;
 
-  /**
-   * @param prompts - Optional prompts array. Defaults to defaultPrompts.
-   */
-  constructor(prompts?: typeof defaultPrompts) {
+  constructor(promptOrConfig?: typeof defaultPrompts | Partial<PromptAnswers>) {
     super();
-    this.prompts = prompts ?? defaultPrompts;
+    if (this.isPrompts(promptOrConfig)) {
+      this.prompts = promptOrConfig;
+    } else if (this.isConfig(promptOrConfig)) {
+      this.config = promptOrConfig;
+      this.prompts = defaultPrompts;
+    } else {
+      this.prompts = defaultPrompts;
+    }
     this.dependencies = InitialDependencies;
     this.devDependencies = InitialDevDependencies;
+    if (promptOrConfig && !Array.isArray(promptOrConfig)) {
+      this.promptOrConfig = {
+        ...this.extractPromptDefaults(this.prompts),
+        ...promptOrConfig,
+      } as PromptAnswers;
+    }
+  }
+
+  private isPrompts(
+    value: typeof defaultPrompts | Partial<PromptAnswers> | undefined,
+  ): value is typeof defaultPrompts {
+    return Array.isArray(value);
+  }
+
+  private isConfig(
+    value: typeof defaultPrompts | Partial<PromptAnswers> | undefined,
+  ): value is Partial<PromptAnswers> {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
   }
 
   /**
-   * Collect user prompts safely.
+   * Extracts `default` values from the prompts array so we can merge them
+   * with a user-supplied partial config. If a default is a function, we call
+   * it with the currently-collected defaults (best-effort).
+   */
+  private extractPromptDefaults(prompts: typeof defaultPrompts): Partial<PromptAnswers> {
+    const defaults: Partial<PromptAnswers> = {};
+    for (const q of prompts) {
+      if (!q?.name) continue;
+      let def: unknown = (q as { default?: unknown }).default;
+      if (typeof def === 'function') {
+        try {
+          def = def(defaults);
+        } catch {
+          def = undefined;
+        }
+      }
+      switch (q.name) {
+        case 'language':
+          if (def !== undefined && Object.values(LANGUAGE).includes(def as LANGUAGE)) {
+            defaults.language = def as LANGUAGE;
+          }
+          break;
+        case 'features':
+          if (def !== undefined && Array.isArray(def)) {
+            defaults.features = def as FEATURES[];
+          }
+          break;
+      }
+    }
+    return defaults;
+  }
+
+  /**
+   * Optionally set config after construction. Config always takes precedence
+   * over prompts when present.
+   */
+  setConfig(config: Partial<PromptAnswers>) {
+    this.config = config;
+    return this;
+  }
+
+  /**
+   * Collect user prompts safely, or use provided config.
+   * Priority: config (if present) -> prompts (interactive)
    * @returns this - for method chaining
    */
   async collectPrompts() {
     await this.safe(async () => {
-      this.answers = await inquirer.prompt(this.prompts);
-      this.writeFiles = new WriteFiles(this.answers);
+      if (this.config) {
+        const defaults = this.extractPromptDefaults(this.prompts);
+        this.promptOrConfig = { ...defaults, ...this.config } as PromptAnswers;
+      } else {
+        this.promptOrConfig = await inquirer.prompt(this.prompts);
+      }
     });
     return this;
   }
@@ -239,9 +308,10 @@ export abstract class BuilderHelper extends SafeBuilder {
 export class ProjectBuilder extends BuilderHelper {
   private projectName!: string;
   private packageManager: PACKAGEMANAGER;
+  private writeFiles!: WriteFiles;
 
-  constructor() {
-    super();
+  constructor(promptOrConfig?: typeof defaultPrompts | Partial<PromptAnswers>) {
+    super(promptOrConfig);
     this.packageManager = detectPackageManager();
   }
 
@@ -258,6 +328,12 @@ export class ProjectBuilder extends BuilderHelper {
       await this.handleExistingDir();
       this.trackStep(() => this.removeProjectDir());
     });
+    if (!this.promptOrConfig) {
+      await this.collectPrompts();
+    }
+    if (this.promptOrConfig) {
+      this.writeFiles = new WriteFiles(this.promptOrConfig);
+    }
     await this.safe(async () => this.initPackageJson());
     return this;
   }
@@ -302,11 +378,20 @@ export class ProjectBuilder extends BuilderHelper {
     return this;
   }
 
+  async setupProject() {
+    this.handleDependencies();
+    this.setupTypeScript();
+    this.setupEslint();
+    this.createSourceFiles();
+    await this.updatePackageJson();
+    return this;
+  }
+
   /**
    * Map selected features to dependencies/devDependencies
    */
-  handleDependencies() {
-    this.answers.features.map((feature: FEATURES) => {
+  protected handleDependencies() {
+    this.promptOrConfig.features.map((feature: FEATURES) => {
       switch (feature) {
         case FEATURES.ESLINT:
           this.addDevDependencies(
@@ -327,11 +412,8 @@ export class ProjectBuilder extends BuilderHelper {
     return this;
   }
 
-  /**
-   * Setup TypeScript if selected in prompts
-   */
-  setupTypeScript() {
-    if (this.answers.language === LANGUAGE.TYPESCRIPT) {
+  protected setupTypeScript() {
+    if (this.promptOrConfig.language === LANGUAGE.TYPESCRIPT) {
       this.devDependencies.push(
         'typescript',
         '@types/express',
@@ -344,11 +426,8 @@ export class ProjectBuilder extends BuilderHelper {
     return this;
   }
 
-  /**
-   * Setup ESLint files if selected in prompts
-   */
-  setupEslint() {
-    if (this.answers.features.includes(FEATURES.ESLINT)) {
+  protected setupEslint() {
+    if (this.promptOrConfig.features.includes(FEATURES.ESLINT)) {
       this.safeSync(() => this.writeFiles.writeEslintFiles());
     }
     return this;
@@ -357,10 +436,10 @@ export class ProjectBuilder extends BuilderHelper {
   /**
    * Create project source directories and files
    */
-  createSourceFiles() {
+  protected createSourceFiles() {
     this.safeSync(() => {
       fs.mkdirSync('src');
-      const allDirs = returnDirs(this.answers.language);
+      const allDirs = returnDirs(this.promptOrConfig.language);
       allDirs.forEach((dir) => fs.mkdirSync(`src/${dir}`));
     });
     this.safeSync(() => {
@@ -377,47 +456,50 @@ export class ProjectBuilder extends BuilderHelper {
   /**
    * Update package.json with dependencies, devDependencies, and scripts
    */
-  async updatePackageJson() {
-    await this.safe(async () => {
-      const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
-      if (this.answers.language !== LANGUAGE.TYPESCRIPT) {
-        pkg.type = 'module';
-      }
-      pkg.dependencies = pkg.dependencies || {};
-      pkg.devDependencies = pkg.devDependencies || {};
-      pkg.scripts = {
-        start:
-          this.answers.language === LANGUAGE.TYPESCRIPT
-            ? 'node dist/index.js'
-            : 'node src/index.js',
-        lint: this.answers.features.includes(FEATURES.ESLINT)
-          ? 'eslint . --ext .ts,.js'
-          : "echo 'no lint'",
-        test: this.answers.features.includes(FEATURES.JEST) ? 'jest' : "echo 'no tests'",
-      };
-      if (this.answers.language === LANGUAGE.TYPESCRIPT) {
+  protected async updatePackageJson() {
+    const spinner = ora('Setting things up...').start();
+    try {
+      await this.safe(async () => {
+        const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+        if (this.promptOrConfig.language !== LANGUAGE.TYPESCRIPT) {
+          pkg.type = 'module';
+        }
+        pkg.dependencies = pkg.dependencies || {};
+        pkg.devDependencies = pkg.devDependencies || {};
         pkg.scripts = {
-          build: 'tsc && tsc-alias',
-          ...pkg.scripts,
+          start:
+            this.promptOrConfig.language === LANGUAGE.TYPESCRIPT
+              ? 'node dist/index.js'
+              : 'node src/index.js',
+          lint: this.promptOrConfig.features.includes(FEATURES.ESLINT)
+            ? 'eslint . --ext .ts,.js'
+            : "echo 'no lint'",
+          test: this.promptOrConfig.features.includes(FEATURES.JEST) ? 'jest' : "echo 'no tests'",
         };
-      }
+        if (this.promptOrConfig.language === LANGUAGE.TYPESCRIPT) {
+          pkg.scripts = {
+            build: 'tsc && tsc-alias',
+            ...pkg.scripts,
+          };
+        }
 
-      const spinner = ora('Setting things up...').start();
-
-      await Promise.all(
-        this.dependencies.map(async (dep) => {
-          pkg.dependencies[dep] = `^${await getLatestVersion(dep)}`;
-        }),
-      );
-      await Promise.all(
-        this.devDependencies.map(async (dep) => {
-          pkg.devDependencies[dep] = `^${await getLatestVersion(dep)}`;
-        }),
-      );
-
+        await Promise.all(
+          this.dependencies.map(async (dep) => {
+            pkg.dependencies[dep] = `^${await getLatestVersion(dep)}`;
+          }),
+        );
+        await Promise.all(
+          this.devDependencies.map(async (dep) => {
+            pkg.devDependencies[dep] = `^${await getLatestVersion(dep)}`;
+          }),
+        );
+        this.createFile('package.json', JSON.stringify(pkg, null, 2));
+      });
       spinner.succeed('Success');
-      this.createFile('package.json', JSON.stringify(pkg, null, 2));
-    });
+    } catch (error) {
+      spinner.fail('Project setup failed!');
+      throw error;
+    }
     return this;
   }
 
@@ -429,7 +511,7 @@ export class ProjectBuilder extends BuilderHelper {
     console.log(chalk.cyan('\nNext steps:'));
     console.log(`  cd ${this.projectName}`);
     console.log(`  ${InstallCommands[this.packageManager]}`);
-    if (this.answers?.language === LANGUAGE.TYPESCRIPT) {
+    if (this.promptOrConfig.language === LANGUAGE.TYPESCRIPT) {
       console.log(`  ${this.packageManager} run build`);
     }
     console.log(`  ${this.packageManager} run start`);

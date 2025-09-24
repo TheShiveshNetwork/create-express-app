@@ -4,6 +4,7 @@ tests/
 .vscode/
 *.ts
 *.map
+.husky
 
 node_modules/
 

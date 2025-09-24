@@ -38,6 +38,17 @@ export const InitCommands: Record<PACKAGEMANAGER, string> = {
   [PACKAGEMANAGER.BUN]: 'bun init',
 };
 
+export type Feature = {
+  name: string;
+  value: FEATURES;
+};
+
+export enum FEATURES {
+  ESLINT = 'eslint',
+  ZOD = 'zod',
+  JEST = 'jest',
+}
+
 const execAsync = promisify(exec);
 
 export async function getLatestVersion(pkg: string): Promise<string> {

@@ -1,15 +1,4 @@
-import { LANGUAGE } from './utils.js';
-
-export type Feature = {
-  name: string;
-  value: FEATURES;
-};
-
-export enum FEATURES {
-  ESLINT = 'eslint',
-  ZOD = 'zod',
-  JEST = 'jest',
-}
+import { Feature, FEATURES, LANGUAGE } from './utils.js';
 
 export const FeaturesList = [
   { name: 'ESLint + Prettier', value: FEATURES.ESLINT },

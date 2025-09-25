@@ -196,6 +196,14 @@ export abstract class BuilderHelper extends SafeBuilder {
   }
 
   /**
+   * Manually set your custom project path
+   */
+  setProjectPath(customPath: string) {
+    this.projectPath = path.resolve(customPath);
+    return this;
+  }
+
+  /**
    * Optionally set config after construction. Config always takes precedence
    * over prompts when present.
    */

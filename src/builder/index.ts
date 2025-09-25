@@ -226,7 +226,7 @@ export abstract class BuilderHelper extends SafeBuilder {
       if (this.config) {
         const defaults = this.extractPromptDefaults(this.prompts);
         this.promptOrConfig = { ...defaults, ...this.config } as PromptAnswers;
-      } else {
+      } else if (!this.promptOrConfig) {
         this.promptOrConfig = await inquirer.prompt(this.prompts);
       }
     });
@@ -338,7 +338,7 @@ export class ProjectBuilder extends BuilderHelper {
     await this.safe(async () => {
       await this.handleExistingDir();
     });
-    if (!this.promptOrConfig) await this.collectPrompts();
+    await this.collectPrompts();
     this.writeFiles = new WriteFiles(this.promptOrConfig);
     await this.safe(async () => this.initPackageJson());
     return this;

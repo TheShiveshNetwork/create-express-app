@@ -49,7 +49,7 @@ export enum FEATURES {
   JEST = 'jest',
 }
 
-const execAsync = promisify(exec);
+export const execAsync = promisify(exec);
 
 export async function getLatestVersion(pkg: string): Promise<string> {
   const { stdout } = await execAsync(`npm view ${pkg} version`);

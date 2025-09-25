@@ -7,6 +7,7 @@ import {
 } from '../prompts.js';
 import {
   detectPackageManager,
+  execAsync,
   FEATURES,
   getLatestVersion,
   InitCommands,
@@ -20,7 +21,6 @@ import path from 'path';
 import fs from 'fs';
 import { WriteFiles } from '../write.js';
 import ora from 'ora';
-import { execSync } from 'child_process';
 
 /**
  * @class SafeBuilder
@@ -260,7 +260,7 @@ export abstract class BuilderHelper extends SafeBuilder {
    */
   async runCommand(cmd: string) {
     await this.safe(async () => {
-      execSync(cmd);
+      await execAsync(cmd);
     });
     return this;
   }

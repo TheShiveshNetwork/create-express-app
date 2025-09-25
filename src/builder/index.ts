@@ -32,7 +32,7 @@ import ora from 'ora';
  */
 export abstract class SafeBuilder {
   protected projectPath!: string;
-  private steps: (() => void)[] = [];
+  private steps: (() => Promise<void>)[] = [];
   private rolledBack = false;
   private setupSignals = false;
 
@@ -40,8 +40,8 @@ export abstract class SafeBuilder {
    * Track a rollback step for cleanup in case of error or interruption.
    * @param step - Function to execute during rollback
    */
-  protected trackStep(step: () => void) {
-    this.steps.push(step);
+  protected trackStep(step: () => void | Promise<void>) {
+    this.steps.push(async () => step());
   }
 
   /**
@@ -49,10 +49,13 @@ export abstract class SafeBuilder {
    */
   async rollback() {
     if (this.rolledBack) return;
-    console.log(chalk.yellow('\n⚠️  Rolling back...'));
+    if (this.projectPath && process.cwd().startsWith(this.projectPath)) {
+      process.chdir(process.cwd());
+    }
+    console.log(chalk.yellow('\n⚠️ Rolling back...'));
     for (const step of this.steps.reverse()) {
       try {
-        step();
+        await step();
       } catch (err) {
         console.error(chalk.red('Rollback step failed: ', err));
       }
@@ -329,21 +332,14 @@ export class ProjectBuilder extends BuilderHelper {
    */
   async init() {
     console.log(chalk.green.bold('\n🚀 Create Express App\n'));
-    await this.safe(async () => {
-      const basePath = this.projectBasePath || process.cwd();
-      this.projectPath = path.join(basePath, this.projectName);
-      if (!this.projectName) this.projectName = process.argv[2] || (await this.askProjectName());
-    });
+    this.projectName = this.projectName || process.argv[2] || (await this.askProjectName());
+    const basePath = this.projectBasePath || process.cwd();
+    this.projectPath = path.join(basePath, this.projectName);
     await this.safe(async () => {
       await this.handleExistingDir();
-      this.trackStep(() => this.removeProjectDir());
     });
-    if (!this.promptOrConfig) {
-      await this.collectPrompts();
-    }
-    if (this.promptOrConfig) {
-      this.writeFiles = new WriteFiles(this.promptOrConfig);
-    }
+    if (!this.promptOrConfig) await this.collectPrompts();
+    this.writeFiles = new WriteFiles(this.promptOrConfig);
     await this.safe(async () => this.initPackageJson());
     return this;
   }
@@ -361,31 +357,48 @@ export class ProjectBuilder extends BuilderHelper {
   }
 
   private async handleExistingDir() {
-    if (fs.existsSync(this.projectPath)) {
-      const { overwrite } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'overwrite',
-          message: `Directory "${this.projectName}" already exists. Remove and continue?`,
-          default: false,
-        },
-      ]);
-      if (!overwrite) {
-        console.log(chalk.red('❌ Aborting, directory already exists.'));
-        process.exit(1);
+    const basePath = this.projectBasePath || process.cwd();
+    this.projectPath = path.join(basePath, this.projectName);
+    this.trackStep(async () => {
+      try {
+        if (fs.existsSync(this.projectPath)) {
+          process.chdir(basePath);
+          await fs.promises.rm(this.projectPath, { recursive: true, force: true });
+          console.log(chalk.yellow(`Rollback: removed directory ${this.projectPath}`));
+        }
+      } catch (err) {
+        console.error(chalk.red('Failed to remove project directory during rollback:', err));
       }
-      this.trackStep(() => this.removeProjectDir());
-      this.safeSync(() => fs.rmSync(this.projectPath, { recursive: true, force: true }));
+    });
+    if (fs.existsSync(this.projectPath)) {
+      await this.safe(async () => {
+        const { overwrite } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'overwrite',
+            message: `Directory "${this.projectName}" already exists. Remove and continue?`,
+            default: false,
+          },
+        ]);
+        if (!overwrite) {
+          console.log(chalk.red('❌ Aborting, directory already exists.'));
+          throw new Error('User aborted');
+        }
+        process.chdir(basePath);
+        await fs.promises.rm(this.projectPath, { recursive: true, force: true });
+      });
     }
-    this.trackStep(() => this.removeProjectDir());
-    this.safeSync(() => fs.mkdirSync(this.projectPath));
+    await fs.promises.mkdir(this.projectPath, { recursive: true });
     process.chdir(this.projectPath);
   }
 
-  private initPackageJson() {
-    this.trackStep(() => fs.rmSync('package.json', { force: true }));
-    this.safeSync(() => this.runCommand(InitCommands[this.packageManager]));
-    return this;
+  private async initPackageJson() {
+    this.trackStep(() => {
+      if (fs.existsSync('package.json')) fs.rmSync('package.json', { force: true });
+    });
+    await this.safe(async () => {
+      await this.runCommand(InitCommands[this.packageManager]);
+    });
   }
 
   async setupProject() {
@@ -431,14 +444,24 @@ export class ProjectBuilder extends BuilderHelper {
         '@types/body-parser',
         'tsc-alias',
       );
-      this.safeSync(() => this.writeFiles.writeTsConfig());
+      this.safeSync(() => {
+        this.trackStep(() => fs.rmSync('tsconfig.json', { force: true }));
+        this.writeFiles.writeTsConfig();
+      });
     }
     return this;
   }
 
   protected setupEslint() {
     if (this.promptOrConfig.features.includes(FEATURES.ESLINT)) {
-      this.safeSync(() => this.writeFiles.writeEslintFiles());
+      this.safeSync(() => {
+        this.trackStep(() => {
+          ['.eslintrc.js', '.prettierrc', '.eslintignore'].forEach((file) => {
+            if (fs.existsSync(file)) fs.rmSync(file, { force: true });
+          });
+        });
+        this.writeFiles.writeEslintFiles();
+      });
     }
     return this;
   }
@@ -448,11 +471,24 @@ export class ProjectBuilder extends BuilderHelper {
    */
   protected createSourceFiles() {
     this.safeSync(() => {
+      const srcPath = path.join(this.projectPath, 'src');
+      this.trackStep(() => fs.rmSync(srcPath, { recursive: true, force: true }));
       fs.mkdirSync('src');
       const allDirs = returnDirs(this.promptOrConfig.language);
       allDirs.forEach((dir) => fs.mkdirSync(`src/${dir}`));
     });
     this.safeSync(() => {
+      const files = [
+        '.gitignore',
+        'src/app.js',
+        'src/index.js',
+        'src/routes.js',
+        'src/controllers.js',
+        'src/schema.js',
+      ];
+      this.trackStep(() => {
+        files.forEach((file) => fs.existsSync(file) && fs.rmSync(file, { force: true }));
+      });
       this.writeFiles.writeGitignore();
       this.writeFiles.writeAppFile();
       this.writeFiles.writeIndexFile();
@@ -470,10 +506,14 @@ export class ProjectBuilder extends BuilderHelper {
     const spinner = ora('Setting things up...').start();
     try {
       await this.safe(async () => {
+        this.trackStep(() => {
+          if (fs.existsSync('package.json')) {
+            fs.rmSync('package.json', { force: true });
+            console.log(chalk.yellow('Rollback: removed package.json'));
+          }
+        });
         const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
-        if (this.promptOrConfig.language !== LANGUAGE.TYPESCRIPT) {
-          pkg.type = 'module';
-        }
+        if (this.promptOrConfig.language !== LANGUAGE.TYPESCRIPT) pkg.type = 'module';
         pkg.dependencies = pkg.dependencies || {};
         pkg.devDependencies = pkg.devDependencies || {};
         pkg.scripts = {
@@ -487,12 +527,8 @@ export class ProjectBuilder extends BuilderHelper {
           test: this.promptOrConfig.features.includes(FEATURES.JEST) ? 'jest' : "echo 'no tests'",
         };
         if (this.promptOrConfig.language === LANGUAGE.TYPESCRIPT) {
-          pkg.scripts = {
-            build: 'tsc && tsc-alias',
-            ...pkg.scripts,
-          };
+          pkg.scripts = { build: 'tsc && tsc-alias', ...pkg.scripts };
         }
-
         await Promise.all(
           this.dependencies.map(async (dep) => {
             pkg.dependencies[dep] = `^${await getLatestVersion(dep)}`;

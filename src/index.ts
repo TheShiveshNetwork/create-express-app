@@ -14,6 +14,4 @@ async function main() {
     .then((b) => b.finalize());
 }
 
-if (process.argv[1]?.endsWith('cli.js')) {
-  main().catch((err) => console.error(chalk.red(err)));
-}
+main().catch((err) => console.error(chalk.red(err)));

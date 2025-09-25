@@ -129,6 +129,7 @@ export abstract class BuilderHelper extends SafeBuilder {
   protected dependencies: string[];
   protected devDependencies: string[];
   protected config?: Partial<PromptAnswers>;
+  protected projectBasePath?: string;
 
   constructor(promptOrConfig?: typeof defaultPrompts | Partial<PromptAnswers>) {
     super();
@@ -196,10 +197,10 @@ export abstract class BuilderHelper extends SafeBuilder {
   }
 
   /**
-   * Manually set your custom project path
+   * Set the base path where project folder will be created.
    */
-  setProjectPath(customPath: string) {
-    this.projectPath = path.resolve(customPath);
+  setProjectBasePath(basePath: string) {
+    this.projectBasePath = path.resolve(basePath);
     return this;
   }
 
@@ -314,7 +315,7 @@ export abstract class BuilderHelper extends SafeBuilder {
  * `addStep()`, `runCustomSteps()`, `createFile()`, etc.
  */
 export class ProjectBuilder extends BuilderHelper {
-  private projectName!: string;
+  public projectName!: string;
   private packageManager: PACKAGEMANAGER;
   private writeFiles!: WriteFiles;
 
@@ -330,7 +331,8 @@ export class ProjectBuilder extends BuilderHelper {
     console.log(chalk.green.bold('\n🚀 Create Express App\n'));
     await this.safe(async () => {
       this.projectName = process.argv[2] || (await this.askProjectName());
-      this.projectPath = path.join(process.cwd(), this.projectName);
+      const basePath = this.projectBasePath || process.cwd();
+      this.projectPath = path.join(basePath, this.projectName);
     });
     await this.safe(async () => {
       await this.handleExistingDir();

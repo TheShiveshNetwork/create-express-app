@@ -330,9 +330,9 @@ export class ProjectBuilder extends BuilderHelper {
   async init() {
     console.log(chalk.green.bold('\n🚀 Create Express App\n'));
     await this.safe(async () => {
-      this.projectName = process.argv[2] || (await this.askProjectName());
       const basePath = this.projectBasePath || process.cwd();
       this.projectPath = path.join(basePath, this.projectName);
+      if (!this.projectName) this.projectName = process.argv[2] || (await this.askProjectName());
     });
     await this.safe(async () => {
       await this.handleExistingDir();

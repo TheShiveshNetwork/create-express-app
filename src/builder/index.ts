@@ -361,7 +361,6 @@ export class ProjectBuilder extends BuilderHelper {
     });
     await this.collectPrompts();
     this.writeFiles = new WriteFiles(this.promptOrConfig);
-    await this.safe(async () => this.initPackageJson());
     return this;
   }
 
@@ -423,6 +422,7 @@ export class ProjectBuilder extends BuilderHelper {
   }
 
   async setupProject() {
+    await this.safe(async () => this.initPackageJson());
     this.handleDependencies();
     this.setupTypeScript();
     this.setupEslint();

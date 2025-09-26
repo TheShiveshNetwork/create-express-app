@@ -258,14 +258,33 @@ export abstract class BuilderHelper extends SafeBuilder {
 
   /**
    * Run a shell command safely.
+   * @param name - Name/description of the command
    * @param cmd - Command string to execute
    * @returns this - for chaining
    */
-  async runCommand(cmd: string) {
-    await this.safe(async () => {
-      await execAsync(cmd);
+  async runCommand(name: string, cmd: string) {
+    return this.safe(async () => {
+      const spinner = ora(`Running command: ${name}...`).start();
+      try {
+        const { stderr } = await execAsync(cmd, { cwd: this.projectPath });
+        if (stderr) {
+          console.error(stderr.trim());
+        }
+        spinner.succeed(`Command ${name} succeeded`);
+        return this;
+      } catch (err: unknown) {
+        spinner.fail(`Command ${name} failed`);
+        console.error(`Command failed: ${cmd}`);
+        if (err instanceof Error) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const e: any = err;
+          if (e.stdout) console.log(e.stdout.trim());
+          if (e.stderr) console.error(e.stderr.trim());
+          throw new Error(`Command "${cmd}" failed with code ${e.code || 'unknown'}: ${e.message}`);
+        }
+        throw new Error(`Command "${cmd}" failed with unknown error`);
+      }
     });
-    return this;
   }
 
   /**
@@ -318,6 +337,7 @@ export abstract class BuilderHelper extends SafeBuilder {
  * `addStep()`, `runCustomSteps()`, `createFile()`, etc.
  */
 export class ProjectBuilder extends BuilderHelper {
+  public scriptName: string;
   public projectName!: string;
   private packageManager: PACKAGEMANAGER;
   private writeFiles!: WriteFiles;
@@ -325,13 +345,14 @@ export class ProjectBuilder extends BuilderHelper {
   constructor(promptOrConfig?: typeof defaultPrompts | Partial<PromptAnswers>) {
     super(promptOrConfig);
     this.packageManager = detectPackageManager();
+    this.scriptName = '🚀 Create Express App';
   }
 
   /**
    * Initialize project: set name, create folder, init package.json
    */
   async init() {
-    console.log(chalk.green.bold('\n🚀 Create Express App\n'));
+    console.log(chalk.green.bold(`\n${this.scriptName}\n`));
     this.projectName = this.projectName || process.argv[2] || (await this.askProjectName());
     const basePath = this.projectBasePath || process.cwd();
     this.projectPath = path.join(basePath, this.projectName);
@@ -381,7 +402,7 @@ export class ProjectBuilder extends BuilderHelper {
           },
         ]);
         if (!overwrite) {
-          console.log(chalk.red('❌ Aborting, directory already exists.'));
+          console.log(chalk.red('Aborting, directory already exists.'));
           throw new Error('User aborted');
         }
         process.chdir(basePath);
@@ -397,7 +418,7 @@ export class ProjectBuilder extends BuilderHelper {
       if (fs.existsSync('package.json')) fs.rmSync('package.json', { force: true });
     });
     await this.safe(async () => {
-      await this.runCommand(InitCommands[this.packageManager]);
+      await this.runCommand('Initializing package.json', InitCommands[this.packageManager]);
     });
   }
 

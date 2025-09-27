@@ -11,32 +11,32 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: 'Scaffold in Seconds',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Spin up a new Express.js project instantly — no setup headaches, just
+        start building.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
+    title: 'Choose What You Need',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Add only the features you want — auth, middleware, testing, or nothing
+        extra at all.
       </>
     ),
   },
   {
-    title: 'Powered by React',
+    title: 'Fully Extendable',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        Build wrappers, add custom steps, and tailor the builder to your exact
+        workflow — full control in your hands.
       </>
     ),
   },

@@ -1,6 +1,6 @@
 {
   "name": "@mrknown404/create-express-app",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "type": "module",
   "keywords": [
     "create-express-app",
@@ -14,11 +14,14 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "test": "node dist/index.js",
+    "test": "node dist/bin/cli.js",
     "prepare": "husky install"
   },
   "bin": {
     "create-express-app": "dist/bin/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
   },
   "dependencies": {
     "chalk": "^5.2.0",

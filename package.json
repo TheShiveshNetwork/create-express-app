@@ -1,11 +1,15 @@
 {
   "name": "@mrknown404/create-express-app",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "type": "module",
   "keywords": [
     "create-express-app",
-    "express-scaffold"
+    "express scaffold",
+    "expresss project creator",
+    "custom express application"
   ],
+  "repository": "https://github.com/TheShiveshNetwork/create-express-app",
+  "homepage": "https://github.com/TheShiveshNetwork/create-express-app?tab=readme-ov-file#create-express-app",
   "author": "mrknown404",
   "license": "ISC",
   "description": "A CLI tool to quickly scaffold an express.js application",

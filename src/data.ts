@@ -1,10 +1,11 @@
 import { LANGUAGE } from './utils.js';
 
 export function returnIndexFile(language: LANGUAGE) {
-  return `import app from "./app${language != LANGUAGE.TYPESCRIPT ? '.js' : ''}";
-import dotenv from "dotenv";
+  return `import dotenv from "dotenv";
 
 dotenv.config();
+
+import app from "./app${language != LANGUAGE.TYPESCRIPT ? '.js' : ''}";
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

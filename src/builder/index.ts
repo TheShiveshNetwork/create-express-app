@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import {
+  IPromptOrConfig,
   InitialDependencies,
   InitialDevDependencies,
   PromptAnswers,
@@ -134,7 +135,7 @@ export abstract class BuilderHelper extends SafeBuilder {
   protected config?: Partial<PromptAnswers>;
   protected projectBasePath?: string;
 
-  constructor(promptOrConfig?: typeof defaultPrompts | Partial<PromptAnswers>) {
+  constructor(promptOrConfig?: IPromptOrConfig) {
     super();
     if (this.isPrompts(promptOrConfig)) {
       this.prompts = promptOrConfig;
@@ -144,8 +145,8 @@ export abstract class BuilderHelper extends SafeBuilder {
     } else {
       this.prompts = defaultPrompts;
     }
-    this.dependencies = InitialDependencies;
-    this.devDependencies = InitialDevDependencies;
+    this.dependencies = [...InitialDependencies];
+    this.devDependencies = [...InitialDevDependencies];
     if (promptOrConfig && !Array.isArray(promptOrConfig)) {
       this.promptOrConfig = {
         ...this.extractPromptDefaults(this.prompts),
@@ -293,11 +294,21 @@ export abstract class BuilderHelper extends SafeBuilder {
    * @param content - File content
    * @returns this - for chaining
    */
-  createFile(filePath: string, content: string) {
-    this.safeSync(() => {
-      const dir = path.dirname(filePath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(filePath, content);
+  async createFile(filePath: string, content: string) {
+    const dir = path.dirname(filePath);
+    this.safe(async () => {
+      this.trackStep(async () => {
+        try {
+          if (fs.existsSync(filePath)) {
+            await fs.promises.unlink(filePath);
+            console.log(chalk.yellow(`Rolled back file: ${filePath}`));
+          }
+        } catch (error) {
+          console.error(chalk.red(`Failed to remove file during rollback: ${filePath}`, error));
+        }
+        if (!fs.existsSync(dir)) fs.promises.mkdir(dir, { recursive: true });
+      });
+      await fs.promises.writeFile(filePath, content);
     });
     return this;
   }
@@ -307,7 +318,7 @@ export abstract class BuilderHelper extends SafeBuilder {
    * @param deps - Dependency names
    * @returns this - for chaining
    */
-  addDependencies(...deps: string[]) {
+  protected addDependencies(...deps: string[]) {
     this.dependencies.push(...deps);
     return this;
   }
@@ -317,7 +328,7 @@ export abstract class BuilderHelper extends SafeBuilder {
    * @param deps - DevDependency names
    * @returns this - for chaining
    */
-  addDevDependencies(...deps: string[]) {
+  protected addDevDependencies(...deps: string[]) {
     this.devDependencies.push(...deps);
     return this;
   }
@@ -342,7 +353,7 @@ export class ProjectBuilder extends BuilderHelper {
   private packageManager: PACKAGEMANAGER;
   private writeFiles!: WriteFiles;
 
-  constructor(promptOrConfig?: typeof defaultPrompts | Partial<PromptAnswers>) {
+  constructor(promptOrConfig?: IPromptOrConfig) {
     super(promptOrConfig);
     this.packageManager = detectPackageManager();
     this.scriptName = '🚀 Create Express App';

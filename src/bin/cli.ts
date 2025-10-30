@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { ProjectBuilder } from '../builder/index.js';
 
 async function main() {
-  const builder = new ProjectBuilder();
+  const builder = new ProjectBuilder({ extras: { dependencies: ['nodemon'] } });
   await builder
     .init()
     .then((b) => b.setupProject())

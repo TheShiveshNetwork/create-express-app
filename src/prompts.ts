@@ -37,3 +37,12 @@ type ExtractPromptValue<T> = T extends { type: 'checkbox'; choices: readonly (in
 export type PromptAnswers = {
   [P in (typeof prompts)[number] as P['name']]: ExtractPromptValue<P>;
 };
+
+export interface ExtrasConfig {
+  dependencies?: string[];
+  devDependencies?: string[];
+}
+
+export type IPromptOrConfig =
+  | (typeof prompts & { extras?: ExtrasConfig })
+  | (Partial<PromptAnswers> & { extras?: ExtrasConfig });

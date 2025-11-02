@@ -137,16 +137,21 @@ export abstract class BuilderHelper extends SafeBuilder {
 
   constructor(promptOrConfig?: IPromptOrConfig) {
     super();
+    this.dependencies = InitialDependencies;
+    this.devDependencies = InitialDevDependencies;
     if (this.isPrompts(promptOrConfig)) {
       this.prompts = promptOrConfig;
     } else if (this.isConfig(promptOrConfig)) {
       this.config = promptOrConfig;
       this.prompts = defaultPrompts;
+      const extras = promptOrConfig.extras ?? {};
+      const extraDeps = extras.dependencies ?? [];
+      const extraDevDeps = extras.devDependencies ?? [];
+      this.dependencies.push(...extraDeps);
+      this.devDependencies.push(...extraDevDeps);
     } else {
       this.prompts = defaultPrompts;
     }
-    this.dependencies = [...InitialDependencies];
-    this.devDependencies = [...InitialDevDependencies];
     if (promptOrConfig && !Array.isArray(promptOrConfig)) {
       this.promptOrConfig = {
         ...this.extractPromptDefaults(this.prompts),
@@ -408,7 +413,7 @@ export class ProjectBuilder extends BuilderHelper {
             type: 'confirm',
             name: 'overwrite',
             message: `Directory "${this.projectName}" already exists. Remove and continue?`,
-            default: false,
+            default: true,
           },
         ]);
         if (!overwrite) {

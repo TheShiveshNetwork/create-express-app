@@ -43,6 +43,4 @@ export interface ExtrasConfig {
   devDependencies?: string[];
 }
 
-export type IPromptOrConfig =
-  | (typeof prompts & { extras?: ExtrasConfig })
-  | (Partial<PromptAnswers> & { extras?: ExtrasConfig });
+export type IPromptOrConfig = typeof prompts | (Partial<PromptAnswers> & { extras?: ExtrasConfig });

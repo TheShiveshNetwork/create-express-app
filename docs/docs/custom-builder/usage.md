@@ -107,6 +107,11 @@ async function main() {
   const builder = new ProjectBuilder({
     language: LANGUAGE.TYPESCRIPT,
     features: [FEATURES.ESLINT, FEATURES.JEST],
+    // add extra dependencies if you want
+    extras: {
+      dependencies: ["nodemon"],
+      devDependencies: ["@types/node"],
+    }
   });
 
   await builder

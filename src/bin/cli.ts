@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 import chalk from 'chalk';
 import { ProjectBuilder } from '../builder/index.js';
+import { FEATURES, LANGUAGE } from '../utils.js';
 
 async function main() {
-  const builder = new ProjectBuilder({ extras: { dependencies: ['nodemon'] } });
+  const builder = new ProjectBuilder({
+    language: LANGUAGE.TYPESCRIPT,
+    features: [FEATURES.ESLINT],
+    extras: { dependencies: ['nodemon'], devDependencies: ['@types/nodemon'] },
+  });
   await builder
     .init()
     .then((b) => b.setupProject())
